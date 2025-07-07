@@ -108,12 +108,11 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
 
     try {
       // Obtenha os detalhes completos do pagamento usando o ID
-      const { Payment } = require('mercadopago'); // Importe Payment aqui ou no topo
-      const paymentClient = new Payment(client); // Crie uma instância para Payment
-     const payment = await client.payment.get({ id: paymentId }); // Note o 'id' dentro de um objeto
+     const payment = await client.payments.get({ id: paymentId });
+     const paymentStatus = payment.status;
+     const externalReference = payment.external_reference;
 
-      console.log(`Pagamento ID: ${paymentId}, Status: ${paymentStatus}, Ref Externa: ${externalReference}`);
-
+    console.log(`Webhook: Pagamento ID: ${paymentId}, Status: ${paymentStatus}, Ref Externa: ${externalReference}`);
       // --- LÓGICA DE NEGÓCIO CRÍTICA AQUI ---
       // 1. Encontre o pedido no seu banco de dados usando 'externalReference'.
       // 2. Atualize o status do pedido no seu banco de dados com 'paymentStatus'.
