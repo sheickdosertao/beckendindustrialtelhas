@@ -1,12 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-const mercadopago = require('mercadopago');
 const dotenv = require('dotenv'); // Para gerenciar variáveis de ambiente
-
 dotenv.config(); // Carrega as variáveis do arquivo .env
 
-const app = express();
+const { MercadoPagoConfig } = require('mercadopago');// Importe o que precisar
+const client = new MercadoPagoConfig({
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN, // Seu token de acesso do .env
+  options: {
+    timeout: 5000 // Exemplo de timeout de 5 segundos
+  }
+});
 
+const app = express();
 // Configuração do CORS: Muito importante para a segurança e para permitir que seu frontend se conecte
 // Use o domínio do seu frontend. Se for testar localmente, pode adicionar 'http://localhost:XXXX'
 const allowedOrigins = [
@@ -39,9 +44,7 @@ app.use(express.json()); // Para parsear JSON no corpo das requisições
 // BACKEND_BASE_URL=https://seubackend.render.com (ou outro domínio do seu backend)
 // FRONTEND_BASE_URL=https://www.industrialtelhas.com
 
-mercadopago.configure({
-  access_token: process.env.MERCADOPAGO_ACCESS_TOKEN // Acessa do .env
-});
+
 
 // --- Rota para Criar Preferência de Pagamento ---
 app.post('/api/mercadopago-preferencia', async (req, res) => {
@@ -82,7 +85,7 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
       // Adicione outras opções conforme necessário (ex: shipments para frete)
     };
 
-    const response = await mercadopago.preferences.create(preference);
+   const response = await client.preferences.create({ body: preference }); // Note o 'body' e a instância 'preferences'
     res.json({ id: response.body.id, init_point: response.body.init_point }); // Retorna o ID e o link de checkout
 
   } catch (err) {
@@ -104,9 +107,9 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
 
     try {
       // Obtenha os detalhes completos do pagamento usando o ID
-      const payment = await mercadopago.payment.get(paymentId);
-      const paymentStatus = payment.body.status; // 'approved', 'pending', 'rejected', etc.
-      const externalReference = payment.body.external_reference; // Sua ID única do pedido
+      const { Payment } = require('mercadopago'); // Importe Payment aqui ou no topo
+      const paymentClient = new Payment(client); // Crie uma instância para Payment
+     const payment = await client.payment.get({ id: paymentId }); // Note o 'id' dentro de um objeto
 
       console.log(`Pagamento ID: ${paymentId}, Status: ${paymentStatus}, Ref Externa: ${externalReference}`);
 
