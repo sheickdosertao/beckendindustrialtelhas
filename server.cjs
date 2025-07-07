@@ -15,7 +15,7 @@ const app = express();
 // Configuração do CORS: Muito importante para a segurança e para permitir que seu frontend se conecte
 // Use o domínio do seu frontend. Se for testar localmente, pode adicionar 'http://localhost:XXXX'
 const allowedOrigins = [
-  'https://www.industrialtelhas.com',
+  'https://www.telhasindustrial.com',
   'http://localhost:3000', // Exemplo para desenvolvimento local do frontend
   'http://localhost:5173', // Exemplo para frameworks como Vite/Vue/React
   'http://127.0.0.1:5500',
@@ -166,5 +166,5 @@ app.get('/api/status', (req, res) => {
 const PORT = process.env.PORT || 3001; // Use 3001 ou outra para não conflitar com o frontend local 3000
 app.listen(PORT, () => {
   console.log(`Backend rodando em http://localhost:${PORT}`);
-  console.log('Lembre-se de configurar as variáveis de ambiente no Render!');
+ 
 });
