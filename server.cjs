@@ -18,6 +18,7 @@ const allowedOrigins = [
   'https://www.industrialtelhas.com',
   'http://localhost:3000', // Exemplo para desenvolvimento local do frontend
   'http://localhost:5173', // Exemplo para frameworks como Vite/Vue/React
+  'http://127.0.0.1:5500',
   // Adicione outros domínios de teste/produção se necessário
 ];
 
