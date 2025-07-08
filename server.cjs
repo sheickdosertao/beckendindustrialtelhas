@@ -54,26 +54,26 @@ app.use(express.json()); // Para parsear JSON no corpo das requisições
 // --- Rota para Criar Preferência de Pagamento ---
 app.post('/api/mercadopago-preferencia', async (req, res) => {
   try {
-    const { items, payerEmail, externalReference } = req.body; // Desestruturação para clareza
+    // *** CORREÇÃO AQUI: Adicione payerName e payerSurname à desestruturação ***
+    const { items, payerEmail, payerName, payerSurname, externalReference } = req.body;
 
     const itensMapeados = items.map(p => ({
       title: p.nome,
-      quantity: Number(p.qtd), // Garantir que é número
+      quantity: Number(p.qtd),
       currency_id: 'BRL',
-      unit_price: Number(p.preco) // Garantir que é número
+      unit_price: Number(p.preco)
     }));
 
-    // URLs de retorno após o pagamento no Mercado Pago
-    // Estas URLs precisam ser acessíveis publicamente pelo Mercado Pago
     const backendBaseUrl = process.env.BACKEND_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3000'; // Default para dev
+    const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3000';
 
-    const preferenceBody = { // Renomeado para 'preferenceBody' para evitar conflito com a classe Preference
+    const preferenceBody = {
       items: itensMapeados,
       payer: {
         email: payerEmail,
-        name: payerName,
-        surname: payerSurname,
+        // *** MELHOR PRÁTICA: Use first_name e last_name para o Mercado Pago ***
+        first_name: payerName,   // Mapeando payerName do frontend para first_name da API
+        last_name: payerSurname, // Mapeando payerSurname do frontend para last_name da API
       },
       back_urls: {
         success: `${frontendBaseUrl}/pagamento/sucesso.html`,
@@ -85,16 +85,14 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
       external_reference: externalReference || `pedido-${Date.now()}`,
     };
 
-    // Use a instância de preferenceClient para criar a preferência
-    const response = await preferenceClient.create({ body: preferenceBody }); // <-- MUDANÇA AQUI
-    res.json({ id: response.id, init_point: response.init_point }); // O 'body' da resposta agora é 'response.id' e 'response.init_point' diretamente
+    const response = await preferenceClient.create({ body: preferenceBody });
+    res.json({ id: response.id, init_point: response.init_point });
 
   } catch (err) {
     console.error('Erro ao criar preferência de pagamento:', err.message);
     res.status(500).json({ error: 'Erro ao criar preferência de pagamento', details: err.message });
   }
 });
-
 
 // --- Rota para Webhook/IPN (Notificações de Pagamento) ---
 // Esta rota receberá as notificações do Mercado Pago sobre o status dos pagamentos.
