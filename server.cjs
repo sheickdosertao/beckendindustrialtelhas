@@ -12,6 +12,8 @@ const client = new MercadoPagoConfig({
 });
 
 const preferenceClient = new Preference(client);
+const paymentClient = new Payment(client);
+
 const app = express();
 // Configuração do CORS: Muito importante para a segurança e para permitir que seu frontend se conecte
 // Use o domínio do seu frontend. Se for testar localmente, pode adicionar 'http://localhost:XXXX'
@@ -104,10 +106,10 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
 
     try {
       // Obtenha os detalhes completos do pagamento usando o ID
-            const { Payment } = require('mercadopago'); // Importe Payment aqui
-            const paymentClient = new Payment(client); // Crie a instância de Payment
+            // Crie a instância de Payment
             const payment = await paymentClient.get({ id: paymentId }); // Use a instância 'paymentClient'
-
+            const paymentStatus = payment.status;
+            const externalReference = payment.external_reference;
     console.log(`Webhook: Pagamento ID: ${paymentId}, Status: ${paymentStatus}, Ref Externa: ${externalReference}`);
       // --- LÓGICA DE NEGÓCIO CRÍTICA AQUI ---
       // 1. Encontre o pedido no seu banco de dados usando 'externalReference'.
@@ -116,7 +118,7 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
       // 4. Se 'rejected' ou 'pending', trate de acordo.
 
       // Exemplo de como você faria (apenas pseudo-código):
-      /*
+      
       const pedido = await seuBancoDeDados.findPedidoByExternalReference(externalReference);
       if (pedido) {
         pedido.statusPagamento = paymentStatus;
@@ -130,7 +132,7 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
           console.log('Pagamento rejeitado. Informar cliente.');
         }
       }
-      */
+      
 
       res.sendStatus(200); // Responda 200 OK para o Mercado Pago para indicar que a notificação foi recebida
     } catch (err) {
