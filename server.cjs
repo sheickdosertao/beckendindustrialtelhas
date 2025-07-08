@@ -3,14 +3,15 @@ const cors = require('cors');
 const dotenv = require('dotenv'); // Para gerenciar variáveis de ambiente
 dotenv.config(); // Carrega as variáveis do arquivo .env
 
-const { MercadoPagoConfig } = require('mercadopago');// Importe o que precisar
+const { MercadoPagoConfig, Preference } = require('mercadopago'); // Importe 'Preference' aqui
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN, // Seu token de acesso do .env
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
   options: {
-    timeout: 5000 // Exemplo de timeout de 5 segundos
+    timeout: 5000
   }
 });
 
+const preferenceClient = new Preference(client);
 const app = express();
 // Configuração do CORS: Muito importante para a segurança e para permitir que seu frontend se conecte
 // Use o domínio do seu frontend. Se for testar localmente, pode adicionar 'http://localhost:XXXX'
@@ -43,7 +44,7 @@ app.use(express.json()); // Para parsear JSON no corpo das requisições
 // Crie um arquivo .env na raiz do seu projeto com:
 // MERCADOPAGO_ACCESS_TOKEN=TEST-f1a7d36c-0bac-4e2e-bcf3-120a2d515f4e
 // BACKEND_BASE_URL=https://seubackend.render.com (ou outro domínio do seu backend)
-// FRONTEND_BASE_URL=https://www.industrialtelhas.com
+// FRONTEND_BASE_URL=https://www.telhasindustrial.com
 
 
 
@@ -64,36 +65,31 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
     const backendBaseUrl = process.env.BACKEND_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3000'; // Default para dev
 
-    const preference = {
+    const preferenceBody = { // Renomeado para 'preferenceBody' para evitar conflito com a classe Preference
       items: itensMapeados,
       payer: {
-        email: payerEmail // Opcional, mas útil para o Mercado Pago
+        email: payerEmail
       },
-      // URLs de retorno para o frontend após o fluxo de pagamento do Mercado Pago
-      // Você pode criar uma página de feedback genérica no frontend
       back_urls: {
-        success: `${frontendBaseUrl}/pagamento/sucesso`,
-        failure: `${frontendBaseUrl}/pagamento/falha`,
-        pending: `${frontendBaseUrl}/pagamento/pendente`,
+        success: `${frontendBaseUrl}/pagamento/sucesso.html`,
+        failure: `${frontendBaseUrl}/pagamento/falha.html`,
+        pending: `${frontendBaseUrl}/pagamento/pendente.html`,
       },
-      auto_return: "approved", // Redireciona automaticamente para success se aprovado
-
-      // URL para webhooks/IPN (Instant Payment Notification) - CRUCIAL para notificações!
-      // Esta URL será chamada pelo Mercado Pago quando o status do pagamento mudar.
-      // Substitua 'api/mercadopago-webhook' pela sua rota de webhook
+      auto_return: "approved",
       notification_url: `${backendBaseUrl}/api/mercadopago-webhook`,
-      external_reference: externalReference || `pedido-${Date.now()}`, // Uma ID única para seu pedido
-      // Adicione outras opções conforme necessário (ex: shipments para frete)
+      external_reference: externalReference || `pedido-${Date.now()}`,
     };
 
-   const response = await client.preferences.create({ body: preference }); // Note o 'body' e a instância 'preferences'
-    res.json({ id: response.body.id, init_point: response.body.init_point }); // Retorna o ID e o link de checkout
+    // Use a instância de preferenceClient para criar a preferência
+    const response = await preferenceClient.create({ body: preferenceBody }); // <-- MUDANÇA AQUI
+    res.json({ id: response.id, init_point: response.init_point }); // O 'body' da resposta agora é 'response.id' e 'response.init_point' diretamente
 
   } catch (err) {
     console.error('Erro ao criar preferência de pagamento:', err.message);
     res.status(500).json({ error: 'Erro ao criar preferência de pagamento', details: err.message });
   }
 });
+
 
 // --- Rota para Webhook/IPN (Notificações de Pagamento) ---
 // Esta rota receberá as notificações do Mercado Pago sobre o status dos pagamentos.
@@ -108,9 +104,9 @@ app.post('/api/mercadopago-webhook', async (req, res) => {
 
     try {
       // Obtenha os detalhes completos do pagamento usando o ID
-     const payment = await client.payments.get({ id: paymentId });
-     const paymentStatus = payment.status;
-     const externalReference = payment.external_reference;
+            const { Payment } = require('mercadopago'); // Importe Payment aqui
+            const paymentClient = new Payment(client); // Crie a instância de Payment
+            const payment = await paymentClient.get({ id: paymentId }); // Use a instância 'paymentClient'
 
     console.log(`Webhook: Pagamento ID: ${paymentId}, Status: ${paymentStatus}, Ref Externa: ${externalReference}`);
       // --- LÓGICA DE NEGÓCIO CRÍTICA AQUI ---
