@@ -3,7 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv'); // Para gerenciar variáveis de ambiente
 dotenv.config(); // Carrega as variáveis do arquivo .env
 
-const { MercadoPagoConfig, Preference } = require('mercadopago'); // Importe 'Preference' aqui
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago'); // Importe 'Preference' aqui
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
   options: {
