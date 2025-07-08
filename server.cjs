@@ -22,6 +22,7 @@ const allowedOrigins = [
   'http://localhost:3000', // Exemplo para desenvolvimento local do frontend
   'http://localhost:5173', // Exemplo para frameworks como Vite/Vue/React
   'http://127.0.0.1:5500',
+  'http://127.0.0.1:52360',
   // Adicione outros domínios de teste/produção se necessário
 ];
 
@@ -70,7 +71,9 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
     const preferenceBody = { // Renomeado para 'preferenceBody' para evitar conflito com a classe Preference
       items: itensMapeados,
       payer: {
-        email: payerEmail
+        email: payerEmail,
+        name: payerName,
+        surname: payerSurname,
       },
       back_urls: {
         success: `${frontendBaseUrl}/pagamento/sucesso.html`,
