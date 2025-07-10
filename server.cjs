@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv'); // Para gerenciar variáveis de ambiente
 dotenv.config(); // Carrega as variáveis do arquivo .env
-
+const nodemailer = require('nodemailer');
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago'); // Importe 'Preference' aqui
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
@@ -25,6 +25,19 @@ const allowedOrigins = [
   'http://127.0.0.1:52360',
   // Adicione outros domínios de teste/produção se necessário
 ];
+
+// Crie um 'transporter' usando suas credenciais de e-mail
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // Ou 'outlook', 'hotmail', etc., dependendo do seu provedor
+    // Se for Gmail e você estiver usando senha de app, a URL seria algo como:
+    // host: 'smtp.gmail.com',
+    // port: 465,
+    // secure: true, // Use SSL/TLS
+    auth: {
+        user: process.env.EMAIL_USER, // Seu e-mail
+        pass: process.env.EMAIL_PASS  // Sua senha ou senha de app
+    }
+});
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -55,7 +68,7 @@ app.use(express.json()); // Para parsear JSON no corpo das requisições
 app.post('/api/mercadopago-preferencia', async (req, res) => {
   try {
     // *** CORREÇÃO AQUI: Adicione payerName e payerSurname à desestruturação ***
-    const { items, payerEmail, payerName, payerSurname, externalReference } = req.body;
+    const { items, payerEmail, payerName, payerSurname, payerCpf, payerAddress, externalReference } = req.body;
 
     const itensMapeados = items.map(p => ({
       title: p.nome,
@@ -74,6 +87,18 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
         // *** MELHOR PRÁTICA: Use first_name e last_name para o Mercado Pago ***
         first_name: payerName,   // Mapeando payerName do frontend para first_name da API
         last_name: payerSurname, // Mapeando payerSurname do frontend para last_name da API
+         identification: {
+             type: 'CPF', // Ou 'CNPJ'
+             number: payerCpf
+        },
+        address: {
+             zip_code: payerAddress.cep,
+             street_name: payerAddress.street,
+             street_number: Number(payerAddress.number),
+             // neighborhood: payerAddress.neighborhood, // Pode não ter campo direto no MP para bairro
+             city: payerAddress.city,
+             federal_unit: payerAddress.state
+        }
       },
       back_urls: {
         success: `${frontendBaseUrl}/pagamento/sucesso.html`,
@@ -86,6 +111,67 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
     };
 
     const response = await preferenceClient.create({ body: preferenceBody });
+
+        const mailOptions = {
+        from: process.env.EMAIL_USER,    // Seu e-mail
+        to: process.env.EMAIL_TO,        // E-mail para onde você quer receber os pedidos
+        subject: `Novo Pedido Recebido - ${items.length} itens`,
+        html: `
+            <p><strong>Detalhes do Novo Pedido:</strong></p>
+            <p><strong>ID da Preferência MP:</strong> ${response.id}</p>
+            <h3>Dados do Cliente:</h3>
+            <ul>
+                <li><strong>Nome Completo:</strong> ${payerName} ${payerSurname}</li>
+                <li><strong>Email:</strong> ${payerEmail}</li>
+                <li><strong>CPF:</strong> ${payerCpf}</li>
+            </ul>
+            <h3>Endereço de Entrega:</h3>
+            <ul>
+                <li><strong>CEP:</strong> ${payerAddress.cep}</li>
+                <li><strong>Rua:</strong> ${payerAddress.street}, ${payerAddress.number}</li>
+                ${payerAddress.complement ? `<li><strong>Complemento:</strong> ${payerAddress.complement}</li>` : ''}
+                <li><strong>Bairro:</strong> ${payerAddress.neighborhood}</li>
+                <li><strong>Cidade/Estado:</strong> ${payerAddress.city}/${payerAddress.state}</li>
+            </ul>
+            <h3>Itens do Pedido:</h3>
+            <table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Preço Unit.</th>
+                        <th>Total Item</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => `
+                        <tr>
+                            <td>${item.nome}</td>
+                            <td>${item.qtd}</td>
+                            <td>R$ ${Number(item.preco).toFixed(2).replace('.', ',')}</td>
+                            <td>R$ ${(Number(item.preco) * Number(item.qtd)).toFixed(2).replace('.', ',')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align:right;"><strong>Total Geral:</strong></td>
+                        <td><strong>R$ ${itensMapeados.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0).toFixed(2).replace('.', ',')}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p>Por favor, verifique o status do pagamento no painel do Mercado Pago.</p>
+        `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Erro ao enviar e-mail de pedido:', error);
+        } else {
+            console.log('E-mail de pedido enviado:', info.response);
+        }
+    });
+    
     res.json({ id: response.id, init_point: response.init_point });
 
   } catch (err) {
