@@ -171,12 +171,19 @@ app.post('/api/mercadopago-preferencia', async (req, res) => {
             console.log('E-mail de pedido enviado:', info.response);
         }
     });
-    
+
     res.json({ id: response.id, init_point: response.init_point });
 
   } catch (err) {
-    console.error('Erro ao criar preferência de pagamento:', err.message);
-    res.status(500).json({ error: 'Erro ao criar preferência de pagamento', details: err.message });
+   console.error('Erro ao criar preferência de pagamento:', err);
+    if (err.status && err.message) {
+      console.error(`Status HTTP do erro do MP: ${err.status}`);
+      console.error(`Mensagem de erro do MP: ${err.message}`);
+      // Se houver detalhes específicos da API, eles podem estar em err.cause ou err.response.data
+      if (err.cause) console.error('Causa do erro do MP:', err.cause);
+      if (err.response && err.response.data) console.error('Detalhes da resposta do MP:', err.response.data);
+  }
+  res.status(500).json({ error: 'Erro ao criar preferência de pagamento', details: err.message });
   }
 });
 
