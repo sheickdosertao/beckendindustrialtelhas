@@ -28,11 +28,11 @@ const allowedOrigins = [
 
 // Crie um 'transporter' usando suas credenciais de e-mail
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Ou 'outlook', 'hotmail', etc., dependendo do seu provedor
+    service: 'smtp.titan.email', // Ou 'outlook', 'hotmail', etc., dependendo do seu provedor
     // Se for Gmail e você estiver usando senha de app, a URL seria algo como:
     // host: 'smtp.gmail.com',
-    // port: 465,
-    // secure: true, // Use SSL/TLS
+    port: 465,
+    secure: true, // Use SSL/TLS
     auth: {
         user: process.env.EMAIL_USER, // Seu e-mail
         pass: process.env.EMAIL_PASS  // Sua senha ou senha de app
